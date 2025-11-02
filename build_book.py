@@ -14,7 +14,7 @@ def get_image_for_number(number: int, numbers_dir: Path) -> Path:
 
 
 GRID_COLUMNS = 5
-GRID_ROWS = 10
+GRID_ROWS = 17
 
 
 def get_html_style() -> list[str]:
@@ -38,21 +38,21 @@ def get_html_style() -> list[str]:
         '        .container {',
         '            display: grid;',
         f'            grid-template-columns: repeat({GRID_COLUMNS}, 1fr);',
-        f'            grid-template-rows: repeat({GRID_ROWS}, 1fr);',
+        f'            grid-template-rows: repeat({GRID_ROWS}, auto);',
         '            grid-auto-flow: column;',
-        '            gap: 10px;',
+        '            column-gap: 10px;',
+        '            row-gap: 0;',
         '            box-sizing: border-box;',
-        '            min-height: 100vh;',
         '        }',
         '        .number-item {',
         '            display: flex;',
         '            align-items: center;',
-        '            justify-content: center;',
+        '            justify-content: flex-start;',
         '        }',
         '        .number-image {',
-        '            max-width: 100%;',
-        '            max-height: 100%;',
-        '            object-fit: contain;',
+        '            max-height: 30px;',
+        '            width: auto;',
+        '            max-width: 50px;',
         '        }',
         '    </style>',
         '</head>',

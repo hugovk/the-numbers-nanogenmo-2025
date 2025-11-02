@@ -1,50 +1,42 @@
 # Fetch book images from IA on request
 import argparse
-import asyncio
 from pathlib import Path
-import aiohttp
 import requests
 import zipfile
 
 
-async def download_file(
-    session: aiohttp.ClientSession,
+def download_file(
+    session: requests.Session,
     url: str,
     output_path: Path,
     identifier: str,
     filename: str,
-    semaphore: asyncio.Semaphore,
     md5: str,
 ):
-    async with semaphore:
-        md5_path = output_path.with_suffix(output_path.suffix + ".md5")
-        if output_path.exists() and md5_path.exists() and md5_path.read_text().strip() == md5:
-            print(f"Skipping {identifier}/{filename}")
-            return
+    md5_path = output_path.with_suffix(output_path.suffix + ".md5")
+    if output_path.exists() and md5_path.exists() and md5_path.read_text().strip() == md5:
+        print(f"Skipping {identifier}/{filename}")
+        return
 
-        print(f"Downloading {identifier}/{filename}")
-        async with session.get(url) as response:
-            response.raise_for_status()
-            output_path.write_bytes(await response.read())
-        md5_path.write_text(md5)
-        print(f"✅ Wrote {output_path}")
-        await asyncio.sleep(1)
+    print(f"Downloading {identifier}/{filename}")
+    response = session.get(url)
+    response.raise_for_status()
+    output_path.write_bytes(response.content)
+    md5_path.write_text(md5)
+    print(f"✅ Wrote {output_path}")
 
 
-async def download_item(
-    session: aiohttp.ClientSession, identifier: str, output_base: str, semaphore: asyncio.Semaphore
-):
+def download_item(session: requests.Session, identifier: str, output_base: str):
     item_dir = Path(output_base) / identifier
     item_dir.mkdir(exist_ok=True)
 
     # Get metadata to find files
     metadata_url = f"https://archive.org/metadata/{identifier}"
-    async with session.get(metadata_url) as response:
-        response.raise_for_status()
-        metadata = await response.json()
+    response = session.get(metadata_url)
+    response.raise_for_status()
+    metadata = response.json()
 
     # Download only page images and hOCR files
-    tasks = []
     for file in metadata.get("files", []):
         filename = file["name"]
         # Filter for the ZIP containing page images and hOCR files
@@ -53,12 +45,10 @@ async def download_item(
 
         download_url = f"https://archive.org/download/{identifier}/{filename}"
         output_path = item_dir / filename
-        tasks.append(download_file(session, download_url, output_path, identifier, filename, semaphore, file["md5"]))
-
-    await asyncio.gather(*tasks)
+        download_file(session, download_url, output_path, identifier, filename, file["md5"])
 
 
-async def main(email: str, collection: str, limit: int):
+def main(email: str, collection: str, limit: int):
     headers = {"User-Agent": f"fetch-from-ia/0.1 (mailto:{email})"}
     search_query = f"mediatype:texts AND format:hocr AND date:[* TO 1924-12-31] AND NOT access-restricted-item:true AND NOT identifier:*mpeg21* AND language:eng AND collection:{collection}"
     output_base = "data/raw"
@@ -74,27 +64,29 @@ async def main(email: str, collection: str, limit: int):
     }
 
     # Send the search request to IA and return the json blob
-    response = requests.get(search_url, params=search_params, headers=headers)
-    response.raise_for_status()
-    results = response.json()
+    with requests.Session() as session:
+        session.headers.update(headers)
 
-    print(f"Found {results['response']['numFound']} items in collection '{collection}'")
+        response = session.get(search_url, params=search_params)
+        response.raise_for_status()
+        results = response.json()
 
-    # Download all items concurrently with rate limiting
-    # Limit concurrent downloads to avoid overwhelming IA
-    semaphore = asyncio.Semaphore(5)
-    async with aiohttp.ClientSession(headers=headers) as session:
-        tasks = []
+        print(f"Found {results['response']['numFound']} items in collection '{collection}'")
+
         for result in results["response"]["docs"]:
             identifier = result["identifier"]
-            tasks.append(download_item(session, identifier, output_base, semaphore))
-
-        await asyncio.gather(*tasks)
+            download_item(session, identifier, output_base)
 
     # unpack zip files
     for item_dir in Path(output_base).iterdir():
         for zip_path in item_dir.glob("*.zip"):
-            print(f"Extracting {zip_path}")
+            # Check if already extracted
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                all_extracted = all((item_dir / name).exists() for name in zip_ref.namelist())
+
+            if all_extracted:
+                continue
+
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(item_dir)
             print(f"✅ Extracted {zip_path}")
@@ -107,4 +99,4 @@ if __name__ == "__main__":
     parser.add_argument("--limit", type=int, default=200, help="Number of books to fetch (default: 200)")
 
     args = parser.parse_args()
-    asyncio.run(main(args.email, args.collection, args.limit))
+    main(args.email, args.collection, args.limit)

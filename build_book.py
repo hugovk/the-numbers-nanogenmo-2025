@@ -46,13 +46,14 @@ def get_image_for_number(number: int, numbers_dir: Path, column_width_px: int) -
 
 GRID_COLUMNS = 5
 
-# Letter page: 8.5in × 11in, with 2in margins = 4.5in × 7in content area
+# Letter page: 8.5in × 11in, margins: top 0.8in, bottom 1in, sides 2in
+# Content area height: 11 - 0.8 - 1 = 9.2in, minus 0.75in running head space = 8.45in
 # At 96 DPI:
 #   - Width: 4.5 * 96 = 432px total, minus 4 gaps of 10px = 392px
 #   - Column width: 392 / 5 = 78px per column (reduced to 75px for safety margin)
-#   - Height: 7 * 96 = 672px height available (reduced to 640px for safety margin)
+#   - Height: 8.45 * 96 = 811px height available (reduced to 800px for safety margin)
 COLUMN_WIDTH_PX = 75
-COLUMN_TARGET_HEIGHT_PX = 640
+COLUMN_TARGET_HEIGHT_PX = 800  
 
 NUMBERS_DIR = Path('data/numbers')
 OUTPUT_DIR = Path('output')
@@ -218,7 +219,7 @@ def main(start: int, max_number: int, numbers_per_page: int, bw: bool, output_fi
     temp_dir = OUTPUT_DIR / 'temp_pages'
     temp_dir.mkdir(exist_ok=True)
 
-    print(f"Generating pages (trying up to {numbers_per_page} numbers per page, actual count varies by image height)...")
+    print(f"Generating pages (filling available space, actual count varies by image height)...")
 
     page_pdfs = []
     current_number = start
@@ -309,8 +310,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Build a book of numbers')
     parser.add_argument('--start', type=int, default=1, help='Starting number (default: 1)')
     parser.add_argument('--max-number', type=int, default=50_000, help='Maximum number to include (default: 50,000)')
-    parser.add_argument('--numbers-per-page', type=int, default=200,
-                        help='Maximum number of images to try per page (default: 200)')
+    parser.add_argument('--numbers-per-page', type=int, default=1000,
+                        help='Maximum number of images to try per page (default: 1000, fills available space)')
     parser.add_argument('--bw', action='store_true', help='Render in black and white (default: False)')
     parser.add_argument('--output-file', type=str, default='the_numbers.pdf',
                         help='Output PDF filename (default: the_numbers.pdf)')

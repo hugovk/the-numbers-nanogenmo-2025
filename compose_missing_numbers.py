@@ -60,13 +60,13 @@ def find_largest_string_decomposition(target: str, available: set[int]) -> list[
 
 def concatenate_images_horizontally(image_paths: list[Path]) -> Image.Image:
     """Concatenate multiple images horizontally with consistent height."""
-    images = [Image.open(p) for p in image_paths]
+    images: list[Image.Image] = [Image.open(p) for p in image_paths]
 
     # Use max height to avoid cutting off any digits
     max_height = max(img.height for img in images)
 
     # Resize images to same height, maintaining aspect ratio
-    resized = []
+    resized: list[Image.Image] = []
     for img in images:
         if img.height != max_height:
             aspect_ratio = img.width / img.height
@@ -87,7 +87,7 @@ def concatenate_images_horizontally(image_paths: list[Path]) -> Image.Image:
         composite.paste(img, (x_offset, 0))
         x_offset += img.width
 
-    # Clean up
+    # Clean up 
     for img in images:
         img.close()
 

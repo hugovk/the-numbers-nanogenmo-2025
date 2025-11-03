@@ -3,8 +3,10 @@ from pathlib import Path
 import argparse
 import pypdf
 import re
+from num2words import num2words
+from jinja2 import Environment, FileSystemLoader
 
-
+ 
 def get_image_for_number(number: int, numbers_dir: Path, column_width_px: int) -> tuple[Path, int]:
     """Get the first available PNG for a number and compute its scaled height.
 
@@ -93,70 +95,26 @@ def distribute_numbers_to_columns(
     return columns, numbers_used
 
 
-def get_html_style() -> list[str]:
-    """Get the HTML style section used for all pages."""
-    return [
-        '<!DOCTYPE html>',
-        '<html lang="en">',
-        '<head>',
-        '    <meta charset="UTF-8">',
-        '    <meta name="viewport" content="width=device-width, initial-scale=1.0">',
-        '    <title>The Numbers</title>',
-        '    <style>',
-        '        @page {',
-        '            margin: 2in;',
-        '        }',
-        '        html, body {',
-        '            height: 100%;',
-        '        }',
-        '        body {',
-        '            font-family: Georgia, serif;',
-        '            margin: 0;',
-        '            padding: 0;',
-        '            display: flex;',
-        '            min-height: 100%;',
-        '        }',
-        '        .container {',
-        '            flex: 1;',
-        '            display: flex;',
-        '            gap: 30px;',
-        '            box-sizing: border-box;',
-        '            height: 100%;',
-        '        }',
-        '        .column {',
-        '            display: flex;',
-        '            flex-direction: column;',
-        '            flex: 1 1 0;',
-        '            max-width: 75px;',
-        '        }',
-        '        .number-item {',
-        '            display: flex;',
-        '            align-items: flex-start;',
-        '            justify-content: flex-start;',
-        '        }',
-        '        .number-image {',
-        '            width: auto;',
-        '            height: auto;',
-        '            max-width: 100%;',
-        '        }',
-        '    </style>',
-        '</head>',
-        '<body>',
-    ]
+def get_jinja_env() -> Environment:
+    """Get configured Jinja2 environment."""
+    return Environment(loader=FileSystemLoader('templates'))
 
 
-def build_page_html(numbers_dir: Path, start_number: int, max_count: int) -> tuple[str, int]:
+def build_page_html(numbers_dir: Path, start_number: int, max_count: int, page_num: int) -> tuple[str, int, int]:
     """Build HTML for a single page with numbers starting from start_number.
 
     Numbers are distributed across columns to fill each column to approximately
     the target height based on actual image heights encoded in filenames.
 
-    Returns:
-        Tuple of (html_content, numbers_used)
-    """
-    html_parts = get_html_style()
-    html_parts.append('    <div class="container">')
+    Args:
+        numbers_dir: Directory containing number subdirectories
+        start_number: First number to include on this page
+        max_count: Maximum number of numbers to try to fit
+        page_num: Page number for running head (1-indexed)
 
+    Returns:
+        Tuple of (html_content, numbers_used, end_number)
+    """
     # Collect numbers with their scaled heights (up to max_count available)
     numbers_with_heights = []
     for number in range(start_number, start_number + max_count):
@@ -168,27 +126,29 @@ def build_page_html(numbers_dir: Path, start_number: int, max_count: int) -> tup
         numbers_with_heights, GRID_COLUMNS, COLUMN_TARGET_HEIGHT_PX
     )
 
-    # Build HTML for each column
-    for column in columns:
-        if not column:
-            continue
+    # Calculate end number and page type
+    end_number = start_number + numbers_used - 1
+    is_recto = page_num % 2 == 1
 
-        html_parts.append('        <div class="column">')
+    # Prepare columns with absolute paths for template
+    template_columns = [
+        [(number, str(image_path.absolute())) for number, image_path in column]
+        for column in columns
+    ]
 
-        for number, image_path in column:
-            html_parts.append('            <div class="number-item">')
-            html_parts.append(f'                <img src="file://{image_path.absolute()}" alt="{number}" class="number-image">')
-            html_parts.append('            </div>')
+    # Render template
+    env = get_jinja_env()
+    template = env.get_template('page.html')
+    html_content = template.render(
+        fonts_dir=Path('fonts').absolute(),
+        page_num=page_num,
+        start_number=start_number,
+        end_number=end_number,
+        is_recto=is_recto,
+        columns=template_columns
+    )
 
-        html_parts.append('        </div>')
-
-    html_parts.extend([
-        '    </div>',
-        '</body>',
-        '</html>'
-    ])
-
-    return '\n'.join(html_parts), numbers_used
+    return html_content, numbers_used, end_number
 
 
 def html_to_pdf(html_path: Path, pdf_path: Path):
@@ -220,6 +180,30 @@ def merge_pdfs(pdf_paths: list[Path], output_path: Path):
     merger.close()
 
 
+def build_toc_html(toc_entries: list[tuple[int, int, int]]) -> str:
+    """Build HTML for table of contents page.
+
+    Args:
+        toc_entries: List of (start_number, end_number, page_number) tuples
+
+    Returns:
+        HTML content for the TOC
+    """
+    # Prepare entries with chapter words
+    template_entries = []
+    for chapter_num, (start, end, page) in enumerate(toc_entries, start=1):
+        chapter_word = num2words(chapter_num)
+        template_entries.append((start, end, page, chapter_word))
+
+    # Render template
+    env = get_jinja_env()
+    template = env.get_template('toc.html')
+    return template.render(
+        fonts_dir=Path('fonts').absolute(),
+        toc_entries=template_entries
+    )
+
+
 def main():
     """Generate PDF book with numbers 1 to max_number."""
     parser = argparse.ArgumentParser(description='Build a book of numbers 1 to 50,000')
@@ -241,20 +225,37 @@ def main():
     current_number = args.start
     page_num = 0
 
+    # Track TOC entries: (start_number, end_number, page_number)
+    toc_entries = []
+    current_range_start = None
+    current_range_page = None
+
     while current_number <= args.max_number:
         # Calculate how many numbers we could try to fit on this page
         remaining = args.max_number - current_number + 1
         max_count = min(args.numbers_per_page, remaining)
 
         # Generate HTML for this page and see how many numbers actually fit
-        html_content, numbers_used = build_page_html(numbers_dir, current_number, max_count)
+        html_content, numbers_used, end_number = build_page_html(numbers_dir, current_number, max_count, page_num + 1)
 
         if numbers_used == 0:
             print(f"Warning: No numbers fit on page starting at {current_number}")
             break
 
-        end_number = current_number + numbers_used - 1
         print(f"Page {page_num + 1} (numbers {current_number}-{end_number})...")
+
+        # Track TOC entry for each 1000-number range
+        if current_range_start is None or (current_number - 1) // 1000 != (current_range_start - 1) // 1000:
+            # Starting a new 1000-number range
+            if current_range_start is not None:
+                # Save the previous range
+                prev_range_num = (current_range_start - 1) // 1000
+                range_start = prev_range_num * 1000 + 1
+                range_end = min(range_start + 999, args.max_number)
+                toc_entries.append((range_start, range_end, current_range_page))
+
+            current_range_start = current_number
+            current_range_page = page_num + 1
 
         html_path = temp_dir / f'page_{page_num:04d}.html'
         html_path.write_text(html_content, encoding='utf-8')
@@ -268,9 +269,43 @@ def main():
         current_number += numbers_used
         page_num += 1
 
-    print(f"\nMerging {len(page_pdfs)} pages...")
+    # Add the final range to TOC
+    if current_range_start is not None:
+        prev_range_num = (current_range_start - 1) // 1000
+        range_start = prev_range_num * 1000 + 1
+        range_end = min(range_start + 999, args.max_number)
+        toc_entries.append((range_start, range_end, current_range_page))
+
+    # Generate title page with absolute font paths
+    print("\nGenerating title page...")
+    title_page_source = Path('title_page.html')
+    title_page_html = title_page_source.read_text(encoding='utf-8')
+
+    # Replace relative font paths with absolute paths
+    fonts_dir = Path('fonts').absolute()
+    title_page_html = title_page_html.replace(
+        'url("fonts/',
+        f'url("file://{fonts_dir}/'
+    )
+
+    title_page_temp = temp_dir / 'title_page.html'
+    title_page_temp.write_text(title_page_html, encoding='utf-8')
+
+    title_pdf_path = temp_dir / 'title_page.pdf'
+    html_to_pdf(title_page_temp, title_pdf_path)
+
+    # Generate TOC
+    print("Generating table of contents...")
+    toc_html = build_toc_html(toc_entries)
+    toc_html_path = temp_dir / 'toc.html'
+    toc_html_path.write_text(toc_html, encoding='utf-8')
+
+    toc_pdf_path = temp_dir / 'toc.pdf'
+    html_to_pdf(toc_html_path, toc_pdf_path)
+
+    print(f"\nMerging title page + TOC + {len(page_pdfs)} pages...")
     final_pdf = output_dir / 'the_numbers.pdf'
-    merge_pdfs(page_pdfs, final_pdf)
+    merge_pdfs([title_pdf_path, toc_pdf_path] + page_pdfs, final_pdf)
 
     print("\nCleaning up temporary PDFs...")
     for pdf_file in temp_dir.glob('*.pdf'):

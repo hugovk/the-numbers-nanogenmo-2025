@@ -137,14 +137,23 @@ def extract_and_save_numbers(hocr_path: Path, jp2_dir: Path, output_dir: Path, b
             # Process all numbers on this page
             for number, x0, y0, x1, y1 in numbers:
                 number_dir = output_dir / str(number)
-                output_path = number_dir / f"{number}_{book_name}_{png_name}"
+
+                # Crop first to get actual dimensions
+                cropped = img.crop((x0, y0, x1, y1))
+                height = cropped.height
+
+                # Include height in filename
+                base_name = Path(png_name).stem
+                output_path = number_dir / f"{number}_{book_name}_{base_name}_h{height}.png"
 
                 if output_path.exists():
+                    cropped.close()
                     skipped += 1
                     continue
 
                 number_dir.mkdir(exist_ok=True)
-                img.crop((x0, y0, x1, y1)).save(output_path, 'PNG')
+                cropped.save(output_path, 'PNG')
+                cropped.close()
                 count += 1
 
     print(f"Completed {book_name}: extracted {count} numbers, skipped {skipped} existing")

@@ -110,8 +110,8 @@ def compose_missing_numbers(numbers_dir: Path, max_number: int = 50_000):
         max_number: Maximum number to compose (default 50,000)
     """
 
-    # Remove all existing composed images first
-    composed_files = list(numbers_dir.glob('*/*_composed.png'))
+    # Remove all existing composed images first (both old and new format)
+    composed_files = list(numbers_dir.glob('*/*_composed*.png'))
     if composed_files:
         print(f"Removing {len(composed_files)} existing composed images...")
         for f in composed_files:
@@ -151,10 +151,11 @@ def compose_missing_numbers(numbers_dir: Path, max_number: int = 50_000):
             # All component images found - compose them
             composite = concatenate_images_horizontally(image_paths)
 
-            # Save to number-specific subdirectory in numbers_dir
+            # Save to number-specific subdirectory in numbers_dir with height in filename
             target_dir = numbers_dir / str(target)
             target_dir.mkdir(exist_ok=True)
-            output_path = target_dir / f"{target}_composed.png"
+            height = composite.height
+            output_path = target_dir / f"{target}_composed_h{height}.png"
             composite.save(output_path, 'PNG')
             composite.close()
 

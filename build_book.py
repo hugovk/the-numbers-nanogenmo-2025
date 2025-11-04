@@ -50,10 +50,10 @@ GRID_COLUMNS = 5
 # Content area height: 11 - 0.88 - 1 = 9.12in, minus 0.75in running head space = 8.37in
 # At 96 DPI:
 #   - Width: 4.5 * 96 = 432px total, minus 4 gaps of 10px = 392px
-#   - Column width: 392 / 5 = 78px per column (reduced to 75px for safety margin)
-#   - Height: 8.37 * 96 = 804px height available (reduced to 800px for safety margin)
+#   - Column width: 392 / 5 = 78px per column (reduced for safety margin)
+#   - Height: 8.37 * 96 = 804px height available (reduced for safety margin)
 COLUMN_WIDTH_PX = 75
-COLUMN_TARGET_HEIGHT_PX = 800  
+COLUMN_TARGET_HEIGHT_PX = 790  
 
 NUMBERS_DIR = Path('data/numbers')
 OUTPUT_DIR = Path('output')
@@ -219,7 +219,7 @@ def main(start: int, max_number: int, numbers_per_page: int, bw: bool, output_fi
     temp_dir = OUTPUT_DIR / 'temp_pages'
     temp_dir.mkdir(exist_ok=True)
 
-    print(f"Generating pages (filling available space, actual count varies by image height)...")
+    print("Generating pages (filling available space, actual count varies by image height)...")
 
     page_pdfs = []
     current_number = start

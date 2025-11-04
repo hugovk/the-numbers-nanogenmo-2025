@@ -30,10 +30,13 @@ Generate a PDF of a book containing the numbers one to fifty-thousand as automat
 
 4. **Build the book!**
    ```bash
-   python build_book.py --max-number 50000
+   python build_book.py 
    ```
 
    Generate a PDF file (and intermediate HTML output) of the number pages, along with a table of contents and cover page.
+
+
+Most scripts have command-line arguments to fine-tune the output.
 
 ## Suggested Internet Archive collections
 
@@ -53,6 +56,10 @@ Best collections with hOCR data by item count (pre-1925, English, public domain)
 
 
 ## More examples
+
+Starting page:
+
+![First page](examples/start.png)
 
 Spreads:
 

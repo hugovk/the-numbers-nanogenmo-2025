@@ -4,6 +4,7 @@ Generate a PDF of a book containing the numbers one to fifty-thousand as automat
 
 ![Sample page showing numbers](examples/color-page.png)
 
+Full PDF output for NaNoGenMo 2025 can be downloaded [here](https://drive.google.com/file/d/1YOTPSFa0dxvrKPLlTbZ5_pNbytbK_MZP/view?usp=drive_link) (66MB)
 
 ## Steps
 

@@ -18,7 +18,7 @@ OUTPUT_DIR = Path("data/numbers")
 
 
 def extract_number_from_text(text: str) -> int | None:
-    """Extract a number from text if it's between 0-50,000."""
+    """Extract a number from text if it's zero or higher."""
     text = text.strip().lower()
 
     # Handle "zero" explicitly
@@ -32,14 +32,14 @@ def extract_number_from_text(text: str) -> int | None:
         if text.startswith("0") and len(text) > 1:
             return None
         num = int(text)
-        if 0 <= num <= 50_000:
+        if num >= 0:
             return num
 
     # Try word to number conversion (e.g., "twenty-three" -> 23)
     # Skip if result would be 0 (word2number incorrectly converts "point" and other words to 0)
     try:
         result = w2n.word_to_num(text)
-        if isinstance(result, int) and 1 <= result <= 50_000:
+        if isinstance(result, int) and result >= 1:
             return result
     except (ValueError, IndexError):
         pass

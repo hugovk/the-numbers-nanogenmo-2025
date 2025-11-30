@@ -4,6 +4,24 @@ from pathlib import Path
 import requests
 import zipfile
 
+DOWNLOAD_LOG = "data/downloaded_archives.log"
+
+
+def load_download_log() -> set[str]:
+    """Load the set of already-downloaded archive identifiers."""
+    log_path = Path(DOWNLOAD_LOG)
+    if log_path.exists():
+        return set(line.strip() for line in log_path.read_text().splitlines() if line.strip())
+    return set()
+
+
+def append_to_download_log(identifier: str):
+    """Append a newly downloaded identifier to the log."""
+    log_path = Path(DOWNLOAD_LOG)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(log_path, "a") as f:
+        f.write(f"{identifier}\n")
+
 
 def download_file(
     session: requests.Session,
@@ -63,6 +81,8 @@ def main(email: str, collection: str, limit: int):
         "start": "1",
     }
 
+    downloaded = load_download_log()
+
     # Send the search request to IA and return the json blob
     with requests.Session() as session:
         session.headers.update(headers)
@@ -75,7 +95,12 @@ def main(email: str, collection: str, limit: int):
 
         for result in results["response"]["docs"]:
             identifier = result["identifier"]
+            if identifier in downloaded:
+                print(f"Skipping {identifier} (already downloaded)")
+                continue
             download_item(session, identifier, output_base)
+            append_to_download_log(identifier)
+            downloaded.add(identifier)
 
     # unpack zip files
     for item_dir in Path(output_base).iterdir():

@@ -40,17 +40,18 @@ def find_largest_string_decomposition(target: str, available: set[int]) -> list[
     """
     # Convert available numbers to strings for prefix matching
     available_strs = {str(n): n for n in available}
+    max_len = max(len(s) for s in available_strs)
 
     components = []
     pos = 0
 
     while pos < len(target):
-        # Try from longest to shortest prefix; exit loop early on match
-        for end in range(len(target), pos, -1):
-            chunk = target[pos:end]
+        # Try from longest available number length to shortest
+        for length in range(min(max_len, len(target) - pos), 0, -1):
+            chunk = target[pos : pos + length]
             if chunk in available_strs:
                 components.append(available_strs[chunk])
-                pos = end
+                pos += length
                 break
         else:
             # Can't compose this number

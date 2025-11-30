@@ -1,10 +1,10 @@
-# The numbers, one to 50 thousand 
+# pi with 50 thousand digits
 
-Generate a PDF of a book containing the numbers one to fifty-thousand as automatically extracted from a corpus of scanned books.
+Generate a PDF of a book containing the pi with fifty-thousand digits as automatically extracted from a corpus of scanned books.
 
-![Sample page showing numbers](examples/color-page.png)
+![Start page showing numbers](examples/start.png)
 
-Full PDF output for NaNoGenMo 2025 can be downloaded [here](https://drive.google.com/file/d/1YOTPSFa0dxvrKPLlTbZ5_pNbytbK_MZP/view?usp=drive_link) (66MB)
+Full [HTML output](https://hugovk.github.io/the-numbers-nanogenmo-2025/%CF%80.html) and [PDF output](https://hugovk.github.io/the-numbers-nanogenmo-2025/%CF%80.pdf) (9.9MB) for NaNoGenMo 2025.
 
 ## Steps
 
@@ -23,18 +23,15 @@ Full PDF output for NaNoGenMo 2025 can be downloaded [here](https://drive.google
    ```
    For each page of each book, extract individual PNG files of digits and number words in the range from 0-50,000.
 
-3. **Compose missing numbers**
+3. **Make pi**
    ```bash
-   python compose_missing_numbers.py
+   uv run make_pi.py
    ```
-   For numbers missing from the range of one to 50 thousand, "compose" number images out of existing primitives extracted in step 2.
+   Creates an HTML file.
 
 4. **Build the book!**
-   ```bash
-   python build_book.py 
-   ```
 
-   Generate a PDF file (and intermediate HTML output) of the number pages, along with a table of contents and cover page.
+   Open HTML in browser, print to PDF...
 
 
 Most scripts have command-line arguments to fine-tune the output.
@@ -58,22 +55,14 @@ Best collections with hOCR data by item count (pre-1925, English, public domain)
 
 ## More examples
 
-Starting page:
+Two pages:
 
-![First page](examples/start.png)
+![Two pages](examples/two-pages.png)
 
 Spreads:
 
 ![Samples showing spreads](examples/number-spread.png)
 
-Generated table of contents:
-
-![TOC](examples/toc.png)
-
 Detail:
 
 ![Number extraction detail](examples/number-detail.png)
-
-Also in black-and-white if you like:
-
-![Number extraction detail](examples/bw-page.png)

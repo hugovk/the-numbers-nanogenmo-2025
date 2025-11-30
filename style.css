@@ -1,0 +1,22 @@
+body {
+    text-align: center;
+}
+
+.decimal {
+    color: red;
+    font-size: 50px;
+    font-weight: bold;
+}
+
+.decimal:hover {
+    filter: invert(1);
+}
+
+img {
+    height: 50px;
+    width: auto;
+}
+
+img:hover {
+    filter: invert(1);
+}
